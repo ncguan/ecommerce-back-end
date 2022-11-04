@@ -75,7 +75,26 @@ router.put('/:id', async (req, res) => {
       return;
     }
 
-    res.status(200).json(tagData);
+    const assocProductTags = await ProductTag.findAll({ where: { tag_id: req.params.id } });
+    const productTagIds = assocProductTags.map(({ product_id }) => product_id);
+    const newProductTags = req.body.productIds
+      .filter((product_id) => !productTagIds.includes(product_id))
+      .map((product_id) => {
+        return {
+          product_id,
+          tag_id: req.params.id,
+        };
+      });
+    const productTagsToRemove = assocProductTags
+      .filter(({ product_id }) => !req.body.productIds.includes(product_id))
+      .map(({ id }) => id);
+
+    return promise = await Promise.all([
+      ProductTag.destroy({ where: { id: productTagsToRemove } }),
+      ProductTag.bulkCreate(newProductTags),
+      res.status(200).json(tagData),
+    ]);
+
   } catch (err) {
     res.status(500).json(err);
   }
